@@ -1,5 +1,5 @@
 from functools import wraps
-from generator import MyPRNG  # Предполагаем, что MyPRNG доступен
+from prg6avtN3151_rnd import MyPRNG  # Предполагаем, что MyPRNG доступен
 from typing import Optional, Callable, Any
 import sys
 import datetime

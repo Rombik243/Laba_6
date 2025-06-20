@@ -1,6 +1,6 @@
 import pytest
-from main import MyPRNG, Schuffle_str_ret
-from generator import LFG_cache
+from prg6avtN3151_subst import MyPRNG, Schuffle_str_ret
+from prg6avtN3151_rnd import LFG_cache
 import os
 
 # Фикстура для создания MyPRNG с фиксированным генератором

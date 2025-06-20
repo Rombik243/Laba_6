@@ -1,5 +1,5 @@
 import pytest
-from generator import MyPRNG, LFG_cache, ValueError
+from prg6avtN3151_rnd import MyPRNG, LFG_cache, ValueError
 
 # Фикстура для создания MyPRNG с фиксированным генератором
 @pytest.fixture
