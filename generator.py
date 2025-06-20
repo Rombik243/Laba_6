@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from typing import Iterator
-from random import randint
 
 
 class ValueError(Exception):

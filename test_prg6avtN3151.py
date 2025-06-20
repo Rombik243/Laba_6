@@ -1,56 +1,86 @@
 import pytest
-from generator import PRNGBase, MyPRNG, LFG_cache, ValueError
-from typing import Iterator
-from random import seed
+from main import MyPRNG, Schuffle_str_ret
+from generator import LFG_cache
+import os
 
-# Исправим LFG_cache для воспроизводимости тестов
-
-
+# Фикстура для создания MyPRNG с фиксированным генератором
 @pytest.fixture
 def prng():
     """Фикстура для создания MyPRNG с LFG_cache."""
     gen = LFG_cache(j=5, k=3, Mod=100, initial_seed=1)
     return MyPRNG(gen)
 
-def test_lfg_cache_initialization():
-    """Проверяет инициализацию генератора."""
-    gen = LFG_cache(j=5, k=3, Mod=100, initial_seed=1)
-    assert isinstance(gen, Iterator), "LFG_cache должен возвращать итератор"
+# Фикстура для декоратора с тестовыми параметрами
+@pytest.fixture
+def decorator(prng):
+    """Фикстура для создания декоратора с PRNG и лог-файлом."""
+    return Schuffle_str_ret("abcd", prng, log_file="test.log")
 
-def test_lfg_cache_values():
-    """Проверяет, что генератор возвращает значения в диапазоне [0, Mod)."""
-    gen = LFG_cache(j=5, k=3, Mod=100, initial_seed=1)
-    values = [next(gen) for _ in range(10)]
-    assert all(0 <= x < 100 for x in values), "Значения вне диапазона [0, Mod)"
+# Фикстура для декоратора без лог-файла
+@pytest.fixture
+def decorator_no_log(prng):
+    """Фикстура для создания декоратора без лог-файла."""
+    return Schuffle_str_ret("abcd", prng)
 
-def test_lfg_cache_invalid_parameters():
-    """Проверяет обработку некорректных параметров."""
-    with pytest.raises(ValueError):
-        d = LFG_cache(j=3, k=5, Mod=100)  # j <= k
-    with pytest.raises(ValueError):
-        d = LFG_cache(j=5, k=0, Mod=100)  # k < 1
-    with pytest.raises(ValueError):
-        d = LFG_cache(j=5, k=3, Mod=0)  # Mod <= 0
+def test_decorator_initialization(decorator):
+    """Проверяет корректность инициализации декоратора."""
+    assert decorator.string == list("abcd"), "Исходная строка не совпадает"
+    assert len(decorator.string) == 4, "Неверная длина строки"
+    assert isinstance(decorator.prng, MyPRNG), "PRNG должен быть экземпляром MyPRNG"
 
-def test_myprng_next_int(prng):
-    """Проверяет метод next_int."""
-    value = prng.next_int()
-    assert isinstance(value, int), "next_int должен возвращать целое число"
-    assert 0 <= value < 100, "next_int возвращает значение вне диапазона [0, Mod)"
+def test_shuffle_string(decorator):
+    """Проверяет перемешивание строки."""
+    @decorator
+    def dummy_func():
+        pass
+    result = dummy_func()
+    assert len(result) == 4
+    assert sorted(result) == sorted("abcd")
+    assert result != "abcd", "Строка должна быть перемешана"
 
-def test_myprng_next_float(prng):
-    """Проверяет метод next_float."""
-    value = prng.next_float()
-    assert isinstance(value, float), "next_float должен возвращать float"
-    assert 0 <= value < 1, "next_float вне диапазона [0, 1)"
+def test_empty_string(decorator):
+    """Проверяет обработку пустой строки."""
+    empty_decorator = Schuffle_str_ret("", decorator.prng, log_file="test.log")
+    @empty_decorator
+    def dummy_func():
+        pass
+    result = dummy_func()
+    assert result == "", "Для пустой строки должен возвращаться пустой результат"
+    with open("test.log", "r") as f:
+        log = f.read()
+    assert "dummy_func(args=(), kwargs={}) -> ''" in log, "Лог для пустой строки отсутствует"
 
-def test_myprng_type_annotations():
-    """Проверяет аннотации типов."""
-    prng = MyPRNG(LFG_cache(j=5, k=3, Mod=100, initial_seed=1))
-    assert isinstance(prng.next_int(), int), "next_int не соответствует аннотации int"
-    assert isinstance(prng.next_float(), float), "next_float не соответствует аннотации float"
+def test_logging_to_file(decorator):
+    """Проверяет логирование в файл."""
+    @decorator
+    def dummy_func():
+        pass
+    result = dummy_func()
+    with open("test.log", "r") as f:
+        log = f.read()
+    assert "dummy_func(args=(), kwargs={})" in log, "Лог вызова отсутствует"
+    assert "аргумент abcd (args[0]) заменен" in log, "Лог замены отсутствует"
 
-def test_prngbase_abstract():
-    """Проверяет, что PRNGBase абстрактный."""
-    with pytest.raises(TypeError, match="Can't instantiate abstract class"):
-        PRNGBase()
+def test_logging_to_stderr(decorator_no_log, capsys):
+    """Проверяет логирование в stderr."""
+    @decorator_no_log
+    def dummy_func():
+        pass
+    result = dummy_func()
+    captured = capsys.readouterr()
+    assert "dummy_func(args=(), kwargs={})" in captured.err, "Лог вызова отсутствует"
+    assert "аргумент abcd (args[0]) заменен" in captured.err, "Лог замены отсутствует"
+
+def test_function_metadata(decorator):
+    """Проверяет сохранение метаданных функции с wraps."""
+    def original_func():
+        """Оригинальная функция."""
+        pass
+    wrapped_func = decorator(original_func)
+    assert wrapped_func.__name__ == "original_func", "Имя функции не сохранено"
+    assert wrapped_func.__doc__ == "Оригинальная функция.", "Документация не сохранена"
+
+def test_cleanup():
+    """Удаляет тестовый лог-файл после тестов."""
+    if os.path.exists("test.log"):
+        os.remove("test.log")
