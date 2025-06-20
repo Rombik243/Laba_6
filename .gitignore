@@ -1,3 +1,20 @@
-# created by virtualenv automatically
+# Игнорировать виртуальное окружение
 .venv/
-.idea
+venv/
+
+# Игнорировать настройки среды PyCharm
+.idea/
+
+# Игнорировать кэш Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Игнорировать системные файлы
+.DS_Store
+Thumbs.db
+
+# Игнорировать временные файлы
+*.log
+*.tmp
