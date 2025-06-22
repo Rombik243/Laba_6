@@ -5,6 +5,7 @@ from typing import Iterator
 class ValueError(Exception):
     pass
 
+
 class PRNGBase(ABC):
 
     @abstractmethod
@@ -13,6 +14,14 @@ class PRNGBase(ABC):
 
     @abstractmethod
     def next_int(self) -> int:
+        pass
+
+    @abstractmethod
+    def next_str(self) -> str:
+        pass
+
+    @abstractmethod
+    def shuffle_str(self, s: str) -> str:
         pass
 
 class MyPRNG(PRNGBase):
@@ -25,6 +34,23 @@ class MyPRNG(PRNGBase):
 
     def next_float(self) -> float:
         return self.next_int() / (1<<32)
+
+    def next_str(self) -> str:
+        x = self.next_int()
+        res = ''
+        for _ in range(x):
+            res += str(self.next_int())
+        return res
+
+    def shuffle_str(self, s: str) -> str:
+        chars = list(s)
+        for i in range(len(chars)-1, 0, -1):
+            # Генерируем случайный индекс с помощью next_int()
+            j = next(self.generator) % (i + 1)
+            # Меняем местами
+            chars[i], chars[j] = chars[j], chars[i]
+        return ''.join(chars)
+
 
 def LFG_cache(j: int, k: int, Mod: int, initial_seed: int = 1) -> Iterator[int]:
     if not ((j > k) and (k >= 1) and (Mod > 1)):
